@@ -11,10 +11,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Call UI dynamic elements
     const callerNameDisplay = document.getElementById('caller-name');
     const activeCallerNameDisplay = document.getElementById('active-caller-name');
+    const callerTypeDisplay = document.getElementById('caller-type');
     const callDurationDisplay = document.getElementById('call-duration');
     const fakeCallerVideo = document.getElementById('fake-caller-video');
     const userCamera = document.getElementById('user-camera');
+    const callerBgImg = document.getElementById('caller-bg-img');
+    const callerBgOverlay = document.getElementById('caller-bg-overlay');
     
+    // Icons
+    const iconPhone = document.getElementById('icon-phone');
+    const iconVideo = document.getElementById('icon-video');
+
     // Buttons
     const btnAccept = document.getElementById('btn-accept');
     const btnDecline = document.getElementById('btn-decline');
@@ -24,14 +31,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsTrigger = document.getElementById('settings-trigger');
     const btnCloseSettings = document.getElementById('btn-close-settings');
     const btnSaveSettings = document.getElementById('btn-save-settings');
+    
     const inputCallerName = document.getElementById('setting-caller-name');
     const inputDelay = document.getElementById('setting-delay');
+    
     const inputVideo = document.getElementById('setting-video');
     const videoStatus = document.getElementById('video-status');
     const btnRemoveVideo = document.getElementById('btn-remove-video');
+    
     const inputImage = document.getElementById('setting-image');
     const imageStatus = document.getElementById('image-status');
-    const callAudio = document.getElementById('call-audio'); // fallback ringing
+    const btnRemoveImage = document.getElementById('btn-remove-image');
+
+    const inputRingtone = document.getElementById('setting-ringtone');
+    const ringtoneStatus = document.getElementById('ringtone-status');
+    const btnRemoveRingtone = document.getElementById('btn-remove-ringtone');
+
+    const inputCallerBg = document.getElementById('setting-caller-bg');
+    const callerBgStatus = document.getElementById('caller-bg-status');
+    const btnRemoveCallerBg = document.getElementById('btn-remove-caller-bg');
+
+    const callAudio = document.getElementById('call-audio'); 
     
     // State
     let taps = 0;
@@ -45,20 +65,27 @@ document.addEventListener('DOMContentLoaded', () => {
     let isDbReady = false;
     let userCameraStream = null;
     let fakeVideoObjectUrl = null;
+    let ringtoneObjectUrl = null;
+    let callerBgObjectUrl = null;
+    let lockScreenObjectUrl = null;
     
     // Database Config
     const DB_NAME = 'BailMeOutDB';
     const STORE_NAME = 'settingsStore';
     let db;
     
-    let pendingVideoBlob = null; // Stored temporarily when file is selected
+    let pendingVideoBlob = null;
     let pendingImageBlob = null;
+    let pendingRingtoneBlob = null;
+    let pendingCallerBgBlob = null;
     
     let config = {
         callerName: "เจ้านาย (ด่วน)",
         delaySeconds: 5,
         hasVideo: false,
-        hasImage: false
+        hasImage: false,
+        hasRingtone: false,
+        hasCallerBg: false
     };
     
     // --- INIT ---
@@ -75,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DATABASE (IndexedDB) ---
     function initDB() {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, 1);
+            const request = indexedDB.open(DB_NAME, 2);
             
             request.onupgradeneeded = (event) => {
                 db = event.target.result;
@@ -98,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function setDBValue(key, value) {
         return new Promise((resolve, reject) => {
-            if (!isDbReady) return resolve(); // or reject
+            if (!isDbReady) return resolve();
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             const request = store.put(value, key);
@@ -119,6 +146,18 @@ document.addEventListener('DOMContentLoaded', () => {
             request.onerror = (e) => reject(e.target.error);
         });
     }
+
+    function removeDBValue(key) {
+        return new Promise((resolve, reject) => {
+            if (!isDbReady) return resolve();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.delete(key);
+            
+            request.onsuccess = () => resolve();
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
     
     // --- SETTINGS ---
     async function loadSettings() {
@@ -135,27 +174,58 @@ document.addEventListener('DOMContentLoaded', () => {
             activeCallerNameDisplay.textContent = config.callerName;
             
             if (config.hasVideo) {
-                videoStatus.textContent = "Video loaded from database.";
                 videoStatus.classList.remove('hidden');
+                btnRemoveVideo.classList.remove('hidden');
             } else {
                 videoStatus.classList.add('hidden');
+                btnRemoveVideo.classList.add('hidden');
             }
-            
+
             if (config.hasImage) {
-                imageStatus.textContent = "Image loaded from database.";
                 imageStatus.classList.remove('hidden');
-                
+                btnRemoveImage.classList.remove('hidden');
                 const imageBlob = await getDBValue('lockScreenBlob');
                 if (imageBlob) {
-                    lockScreenImg.src = URL.createObjectURL(imageBlob);
+                    if (lockScreenObjectUrl) URL.revokeObjectURL(lockScreenObjectUrl);
+                    lockScreenObjectUrl = URL.createObjectURL(imageBlob);
+                    lockScreenImg.src = lockScreenObjectUrl;
                     lockScreenImg.classList.remove('hidden');
-                    clockDisplay.classList.add('hidden');
                 }
             } else {
                 imageStatus.classList.add('hidden');
+                btnRemoveImage.classList.add('hidden');
                 lockScreenImg.classList.add('hidden');
-                clockDisplay.classList.remove('hidden');
             }
+
+            if (config.hasRingtone) {
+                ringtoneStatus.classList.remove('hidden');
+                btnRemoveRingtone.classList.remove('hidden');
+                const ringtoneBlob = await getDBValue('ringtoneBlob');
+                if (ringtoneBlob) {
+                    if (ringtoneObjectUrl) URL.revokeObjectURL(ringtoneObjectUrl);
+                    ringtoneObjectUrl = URL.createObjectURL(ringtoneBlob);
+                    callAudio.src = ringtoneObjectUrl;
+                }
+            } else {
+                ringtoneStatus.classList.add('hidden');
+                btnRemoveRingtone.classList.add('hidden');
+                callAudio.src = ''; 
+            }
+
+            if (config.hasCallerBg) {
+                callerBgStatus.classList.remove('hidden');
+                btnRemoveCallerBg.classList.remove('hidden');
+                const callerBgBlob = await getDBValue('callerBgBlob');
+                if (callerBgBlob) {
+                    if (callerBgObjectUrl) URL.revokeObjectURL(callerBgObjectUrl);
+                    callerBgObjectUrl = URL.createObjectURL(callerBgBlob);
+                    callerBgImg.src = callerBgObjectUrl;
+                }
+            } else {
+                callerBgStatus.classList.add('hidden');
+                btnRemoveCallerBg.classList.add('hidden');
+            }
+
         } catch(e) {
             console.error("Error loading settings", e);
         }
@@ -171,28 +241,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pendingVideoBlob) {
             await setDBValue('videoBlob', pendingVideoBlob);
             config.hasVideo = true;
-            pendingVideoBlob = null; // clear it
-            videoStatus.textContent = "Video saved to database.";
-            videoStatus.classList.remove('hidden');
+            pendingVideoBlob = null;
         }
         
         if (pendingImageBlob) {
             await setDBValue('lockScreenBlob', pendingImageBlob);
             config.hasImage = true;
             pendingImageBlob = null;
-            imageStatus.textContent = "Image saved to database.";
-            imageStatus.classList.remove('hidden');
-            
-            // Reload image in UI instantly
-            lockScreenImg.src = URL.createObjectURL(await getDBValue('lockScreenBlob'));
-            lockScreenImg.classList.remove('hidden');
-            clockDisplay.classList.add('hidden');
+        }
+
+        if (pendingRingtoneBlob) {
+            await setDBValue('ringtoneBlob', pendingRingtoneBlob);
+            config.hasRingtone = true;
+            pendingRingtoneBlob = null;
+        }
+
+        if (pendingCallerBgBlob) {
+            await setDBValue('callerBgBlob', pendingCallerBgBlob);
+            config.hasCallerBg = true;
+            pendingCallerBgBlob = null;
         }
         
         await setDBValue('config', config);
-        
-        callerNameDisplay.textContent = config.callerName;
-        activeCallerNameDisplay.textContent = config.callerName;
+        await loadSettings();
         
         btnSaveSettings.textContent = 'Save Settings';
         btnSaveSettings.disabled = false;
@@ -204,50 +275,57 @@ document.addEventListener('DOMContentLoaded', () => {
     
     inputVideo.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
-            pendingVideoBlob = file;
-            videoStatus.textContent = `Selected: ${file.name}. Click Save!`;
-            videoStatus.classList.remove('hidden');
-        }
+        if (file) { pendingVideoBlob = file; videoStatus.textContent = `Selected: ${file.name}. Click Save!`; videoStatus.classList.remove('hidden'); }
     });
-    
     inputImage.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
-            pendingImageBlob = file;
-            imageStatus.textContent = `Selected: ${file.name}. Click Save!`;
-            imageStatus.classList.remove('hidden');
-        }
+        if (file) { pendingImageBlob = file; imageStatus.textContent = `Selected: ${file.name}. Click Save!`; imageStatus.classList.remove('hidden'); }
     });
-    
+    inputRingtone.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) { pendingRingtoneBlob = file; ringtoneStatus.textContent = `Selected: ${file.name}. Click Save!`; ringtoneStatus.classList.remove('hidden'); }
+    });
+    inputCallerBg.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) { pendingCallerBgBlob = file; callerBgStatus.textContent = `Selected: ${file.name}. Click Save!`; callerBgStatus.classList.remove('hidden'); }
+    });
+
     btnRemoveVideo.addEventListener('click', async () => {
-        try {
-            if (!isDbReady) return;
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
-            store.delete('videoBlob');
-            
-            config.hasVideo = false;
-            await setDBValue('config', config);
-            
-            videoStatus.classList.add('hidden');
-            inputVideo.value = '';
-            pendingVideoBlob = null;
-            
-            alert("Video removed! Reverted to default audio call.");
-        } catch(e) {
-            console.error("Failed to remove video", e);
-        }
+        await removeDBValue('videoBlob');
+        config.hasVideo = false; await setDBValue('config', config);
+        inputVideo.value = ''; pendingVideoBlob = null;
+        videoStatus.classList.add('hidden'); btnRemoveVideo.classList.add('hidden');
+    });
+    btnRemoveImage.addEventListener('click', async () => {
+        await removeDBValue('lockScreenBlob');
+        config.hasImage = false; await setDBValue('config', config);
+        inputImage.value = ''; pendingImageBlob = null;
+        imageStatus.classList.add('hidden'); btnRemoveImage.classList.add('hidden');
+        lockScreenImg.src = ''; lockScreenImg.classList.add('hidden');
+    });
+    btnRemoveRingtone.addEventListener('click', async () => {
+        await removeDBValue('ringtoneBlob');
+        config.hasRingtone = false; await setDBValue('config', config);
+        inputRingtone.value = ''; pendingRingtoneBlob = null;
+        ringtoneStatus.classList.add('hidden'); btnRemoveRingtone.classList.add('hidden');
+        callAudio.src = '';
+    });
+    btnRemoveCallerBg.addEventListener('click', async () => {
+        await removeDBValue('callerBgBlob');
+        config.hasCallerBg = false; await setDBValue('config', config);
+        inputCallerBg.value = ''; pendingCallerBgBlob = null;
+        callerBgStatus.classList.add('hidden'); btnRemoveCallerBg.classList.add('hidden');
+        callerBgImg.src = '';
     });
     
     btnSaveSettings.addEventListener('click', saveSettings);
     btnCloseSettings.addEventListener('click', () => {
         settingsUI.classList.add('hidden');
         clockUI.classList.remove('hidden');
-        loadSettings(); // revert unsaved changes
+        loadSettings();
+        pendingVideoBlob = pendingImageBlob = pendingRingtoneBlob = pendingCallerBgBlob = null;
     });
     
-    // --- CLOCK UI ---
     function startClock() {
         setInterval(() => {
             const now = new Date();
@@ -260,8 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const minutes = String(now.getMinutes()).padStart(2, '0');
         clockDisplay.textContent = `${hours}:${minutes}`;
     }
-    
-    // --- SECRET TRIGGERS ---
     
     document.body.addEventListener('touchstart', handleTap);
     document.body.addEventListener('mousedown', handleTap);
@@ -301,7 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsTrigger.addEventListener('mouseup', cancelLongPress);
     settingsTrigger.addEventListener('mouseleave', cancelLongPress);
     
-    // --- FAKE CALL LOGIC ---
     function startFakeCallSequence() {
         clockDisplay.style.opacity = '0.5';
         setTimeout(() => clockDisplay.style.opacity = '1', 200);
@@ -317,7 +392,28 @@ document.addEventListener('DOMContentLoaded', () => {
         fakeCallUI.classList.remove('hidden');
         fakeCallUI.classList.add('animate-fade-in');
         
-        if (navigator.vibrate) {
+        if (config.hasVideo) {
+            iconVideo.classList.remove('hidden');
+            iconPhone.classList.add('hidden');
+            callerTypeDisplay.textContent = "FaceTime Video";
+            callerBgImg.classList.add('hidden');
+            callerBgOverlay.classList.add('hidden');
+        } else {
+            iconPhone.classList.remove('hidden');
+            iconVideo.classList.add('hidden');
+            callerTypeDisplay.textContent = "Incoming Call";
+            if (config.hasCallerBg && callerBgObjectUrl) {
+                callerBgImg.classList.remove('hidden');
+                callerBgOverlay.classList.remove('hidden');
+            } else {
+                callerBgImg.classList.add('hidden');
+                callerBgOverlay.classList.add('hidden');
+            }
+        }
+
+        if (config.hasRingtone && callAudio.src) {
+            callAudio.play().catch(e => console.error("Audio playback failed", e));
+        } else if (navigator.vibrate) {
             vibrationInterval = setInterval(() => {
                 navigator.vibrate([1000, 500]);
             }, 1500);
@@ -325,14 +421,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Answer Call
     btnAccept.addEventListener('click', async () => {
         stopVibration();
+        if (config.hasRingtone) callAudio.pause();
+        
         fakeCallUI.classList.add('hidden');
         activeCallUI.classList.remove('hidden');
         
         if (config.hasVideo) {
-            // Start front camera WebRTC
             try {
                 userCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
                 userCamera.srcObject = userCameraStream;
@@ -340,13 +436,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 userCamera.style.display = 'block';
             } catch (err) {
                 console.error("Camera access denied or unavailable", err);
-                // Default grey box is displayed by CSS fallback
             }
             
-            // Load fake caller video from IndexedDB
             try {
                 const videoBlob = await getDBValue('videoBlob');
                 if (videoBlob) {
+                    if (fakeVideoObjectUrl) URL.revokeObjectURL(fakeVideoObjectUrl);
                     fakeVideoObjectUrl = URL.createObjectURL(videoBlob);
                     fakeCallerVideo.src = fakeVideoObjectUrl;
                     fakeCallerVideo.classList.remove('hidden');
@@ -356,12 +451,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Failed to load videoBlob", e);
             }
         } else {
-            // Audio Call Mode (Hide Video Components)
             userCamera.classList.add('hidden');
             fakeCallerVideo.classList.add('hidden');
             if (userCameraStream) {
                 userCameraStream.getTracks().forEach(track => track.stop());
                 userCameraStream = null;
+            }
+            
+            activeCallUI.style.backgroundImage = config.hasCallerBg && callerBgObjectUrl ? `url(${callerBgObjectUrl})` : 'none';
+            activeCallUI.style.backgroundSize = 'cover';
+            activeCallUI.style.backgroundPosition = 'center';
+            if (config.hasCallerBg) {
+                activeCallUI.style.boxShadow = "inset 0 0 0 2000px rgba(0,0,0,0.7)";
+            } else {
+                activeCallUI.style.boxShadow = "none";
+                activeCallUI.style.backgroundColor = "black";
             }
         }
 
@@ -373,24 +477,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     });
     
-    // Decline / End Call
     btnDecline.addEventListener('click', endCall);
     btnEndCall.addEventListener('click', endCall);
     
     function endCall() {
         stopVibration();
+        if (config.hasRingtone) {
+            callAudio.pause();
+            callAudio.currentTime = 0;
+        }
         clearInterval(callTimerInterval);
         
-        // Stop Fake Video
         fakeCallerVideo.pause();
         fakeCallerVideo.src = '';
         fakeCallerVideo.classList.add('hidden');
-        if (fakeVideoObjectUrl) {
-            URL.revokeObjectURL(fakeVideoObjectUrl);
-            fakeVideoObjectUrl = null;
-        }
         
-        // Stop WebRTC Camera
         userCamera.classList.add('hidden');
         if (userCameraStream) {
             userCameraStream.getTracks().forEach(track => track.stop());
@@ -398,7 +499,6 @@ document.addEventListener('DOMContentLoaded', () => {
             userCameraStream = null;
         }
         
-        // Hide all call UI, show clock
         fakeCallUI.classList.add('hidden');
         activeCallUI.classList.add('hidden');
         clockUI.classList.remove('hidden');
@@ -424,11 +524,21 @@ document.addEventListener('DOMContentLoaded', () => {
         endCall();
     }
     
-    // --- SERVICE WORKER ---
     function registerServiceWorker() {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('SW registered!', reg))
+            navigator.serviceWorker.register(`sw.js`)
+                .then(reg => {
+                    console.log('SW registered!', reg);
+                    reg.onupdatefound = () => {
+                        const installingWorker = reg.installing;
+                        installingWorker.onstatechange = () => {
+                            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('New or updated content is available.');
+                                // reload to get new content instantly if desired
+                            }
+                        };
+                    };
+                })
                 .catch(err => console.error('SW Failed!', err));
         }
     }

@@ -3,72 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>BailMeOut</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
 </head>
 <body class="bg-black text-gray-800 overflow-hidden select-none h-screen w-screen m-0 p-0 font-sans">
     
     <!-- Camouflage UI: Minimalist Digital Clock or Image -->
-    <div id="clock-ui" class="flex items-center justify-center h-full w-full relative">
+    <div id="clock-ui" class="flex flex-col items-center justify-start pt-24 h-full w-full relative bg-black">
         <img id="lock-screen-img" class="absolute top-0 left-0 w-full h-full object-cover z-0 hidden">
-        <div id="clock-display" class="text-7xl font-light tracking-widest text-[#333333] z-10">00:00</div>
+        <div id="clock-display" class="text-7xl font-light tracking-widest text-[#f5f5f5] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] z-10 transition-all duration-300">00:00</div>
         <!-- Hidden button for settings trigger -->
         <div id="settings-trigger" class="absolute top-0 right-0 w-24 h-24 bg-transparent z-50"></div>
     </div>
 
     <!-- Fake Call UI (FaceTime Incoming Clone) -->
-    <div id="fake-call-ui" class="hidden h-full w-full flex-col justify-between items-center text-white bg-black bg-opacity-70 backdrop-blur-2xl absolute top-0 left-0 z-40">
+    <div id="fake-call-ui" class="hidden h-full w-full relative overflow-hidden flex-col items-center justify-start pt-20 text-white bg-[#111] absolute top-0 left-0 z-40">
+        
+        <!-- Caller Background Image (Blurred) -->
+        <img id="caller-bg-img" class="absolute top-0 left-0 w-full h-full object-cover blur-sm opacity-60 z-0 hidden">
+        <div id="caller-bg-overlay" class="absolute top-0 left-0 w-full h-full bg-black/40 z-0 hidden"></div>
+
         <!-- Caller Info -->
-        <div class="mt-20 flex flex-col items-center">
-            <div id="caller-name" class="text-4xl font-light mb-2 drop-shadow-md">เจ้านาย (ด่วน)</div>
-            <div class="text-gray-200 text-lg">FaceTime Video</div>
+        <div class="flex flex-col items-center z-10 mt-8">
+            <div id="caller-name" class="text-4xl font-light mb-2 drop-shadow-lg text-white">เจ้านาย (ด่วน)</div>
+            <div id="caller-type" class="text-gray-300 text-lg drop-shadow-md pb-4">Incoming Call</div>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="mb-20 w-full px-12 flex justify-between items-center">
+        <!-- Action Buttons - Moved to absolute bottom -->
+        <div class="absolute bottom-10 pb-12 w-full px-12 flex justify-between items-center z-20">
             <div class="flex flex-col items-center">
                 <button id="btn-decline" class="w-[72px] h-[72px] rounded-full bg-[#ff3b30] flex items-center justify-center mb-3 active:opacity-70 transition-opacity">
                     <svg class="w-10 h-10 text-white transform rotate-[135deg]" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path></svg>
                 </button>
-                <span class="text-white text-sm">Decline</span>
+                <span class="text-white text-sm drop-shadow-md">Decline</span>
             </div>
             
             <div class="flex flex-col items-center">
                 <button id="btn-accept" class="w-[72px] h-[72px] rounded-full bg-[#34c759] flex items-center justify-center mb-3 active:opacity-70 transition-opacity animate-pulse">
-                    <!-- FaceTime Video Icon (simplified) -->
-                    <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                    <!-- Dynamic Icon based on Call Type -->
+                    <div id="accept-icon">
+                        <svg id="icon-phone" class="w-8 h-8 text-white hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path></svg>
+                        <svg id="icon-video" class="w-8 h-8 text-white hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                    </div>
                 </button>
-                <span class="text-white text-sm">Accept</span>
+                <span class="text-white text-sm drop-shadow-md">Accept</span>
             </div>
         </div>
     </div>
 
     <!-- Active Video Call UI -->
     <div id="active-call-ui" class="hidden h-full w-full relative bg-black absolute top-0 left-0 z-40 overflow-hidden">
-        <!-- Caller Video Fullscreen -->
         <video id="fake-caller-video" class="absolute top-0 left-0 w-full h-full object-cover z-0 hidden" autoplay playsinline loop></video>
-        
-        <!-- User PIP Front Camera -->
         <video id="user-camera" class="absolute bottom-32 right-6 w-28 h-40 bg-gray-800 rounded-xl object-cover shadow-2xl border-2 border-gray-600 z-10 hidden" autoplay playsinline muted></video>
 
-        <!-- Overlay Controls -->
         <div class="absolute top-0 left-0 w-full p-8 z-20 bg-gradient-to-b from-black/50 to-transparent flex flex-col items-center pointer-events-none">
             <div id="active-caller-name" class="text-white text-xl font-medium drop-shadow-md">เจ้านาย (ด่วน)</div>
             <div class="text-white text-sm opacity-80" id="call-duration">00:00</div>
         </div>
 
-        <div class="absolute bottom-10 left-0 w-full flex justify-center z-20">
+        <div class="absolute bottom-10 left-0 w-full flex justify-center z-20 pb-12">
             <button id="btn-end-call" class="w-[72px] h-[72px] rounded-full bg-[#ff3b30] flex items-center justify-center active:opacity-70 transition-opacity shadow-lg">
                 <svg class="w-10 h-10 text-white transform rotate-[135deg]" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path></svg>
             </button>
         </div>
     </div>
-
+    
     <!-- Settings UI -->
-    <div id="settings-ui" class="hidden h-full w-full bg-[#111] text-gray-200 absolute top-0 left-0 z-50 p-6 overflow-y-auto">
+    <div id="settings-ui" class="hidden h-full w-full bg-[#111] text-gray-200 absolute top-0 left-0 z-50 p-6 overflow-y-auto pb-20">
         <div class="flex justify-between items-center mb-8">
             <h2 class="text-2xl font-bold">Settings</h2>
             <button id="btn-close-settings" class="text-gray-400 p-2 text-3xl leading-none">&times;</button>
@@ -85,33 +92,51 @@
                 <input type="number" id="setting-delay" class="w-full bg-[#222] border border-gray-700 rounded p-4 text-lg text-white focus:outline-none focus:border-blue-500" value="5">
             </div>
 
-            <div>
-                <label class="block text-sm mb-2 text-gray-400">Upload Fake Lock Screen (Screenshot)</label>
-                <input type="file" id="setting-image" accept="image/*" class="w-full bg-[#222] border border-gray-700 rounded p-3 text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
-                <p class="text-xs text-gray-500 mt-2">Display this image full-screen instead of the digital clock.</p>
-                <p id="image-status" class="text-xs text-green-500 mt-1 hidden">Image loaded from database.</p>
+            <div class="border-t border-gray-800 pt-6">
+                <label class="block text-sm mb-2 text-gray-400">Ringtone (Audio .mp3/.wav)</label>
+                <input type="file" id="setting-ringtone" accept="audio/*" class="w-full bg-[#222] border border-gray-700 rounded p-3 text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
+                <p class="text-xs text-gray-500 mt-2">Custom looping sound for incoming call.</p>
+                <p id="ringtone-status" class="text-xs text-green-500 mt-1 hidden">Ringtone loaded from database.</p>
+                <button id="btn-remove-ringtone" class="mt-3 bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded transition-colors text-sm hidden">Remove Ringtone</button>
             </div>
 
-            <div>
-                <label class="block text-sm mb-2 text-gray-400">Fake Video (MP4)</label>
+            <div class="border-t border-gray-800 pt-6">
+                <label class="block text-sm mb-2 text-gray-400">Caller Background (Image)</label>
+                <input type="file" id="setting-caller-bg" accept="image/*" class="w-full bg-[#222] border border-gray-700 rounded p-3 text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
+                <p class="text-xs text-gray-500 mt-2">Shows behind caller name if no video is set.</p>
+                <p id="caller-bg-status" class="text-xs text-green-500 mt-1 hidden">Background loaded from database.</p>
+                <button id="btn-remove-caller-bg" class="mt-3 bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded transition-colors text-sm hidden">Remove Caller Background</button>
+            </div>
+
+            <div class="border-t border-gray-800 pt-6">
+                <label class="block text-sm mb-2 text-gray-400">Fake Lock Screen (Image)</label>
+                <input type="file" id="setting-image" accept="image/*" class="w-full bg-[#222] border border-gray-700 rounded p-3 text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
+                <p class="text-xs text-gray-500 mt-2">Standby image behind digital clock.</p>
+                <p id="image-status" class="text-xs text-green-500 mt-1 hidden">Lock screen loaded from database.</p>
+                <button id="btn-remove-image" class="mt-3 bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded transition-colors text-sm hidden">Remove Lock Screen</button>
+            </div>
+
+            <div class="border-t border-gray-800 pt-6">
+                <label class="block text-sm mb-2 text-gray-400">Fake Video (MP4/WebM)</label>
                 <input type="file" id="setting-video" accept="video/mp4, video/webm" class="w-full bg-[#222] border border-gray-700 rounded p-3 text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
-                <p class="text-xs text-gray-500 mt-2">Upload your own MP4 video. Video is saved offline to IndexedDB.</p>
+                <p class="text-xs text-gray-500 mt-2">Upload your own mock video call.</p>
                 <p id="video-status" class="text-xs text-green-500 mt-1 hidden">Video loaded from database.</p>
-                <button id="btn-remove-video" class="mt-3 bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded transition-colors text-sm">
-                    Remove Video
-                </button>
+                <button id="btn-remove-video" class="mt-3 bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded transition-colors text-sm hidden">Remove Video</button>
             </div>
             
-            <button id="btn-save-settings" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded mt-4 transition-colors text-lg">
+            <button id="btn-save-settings" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded mt-6 transition-colors text-lg">
                 Save Settings
             </button>
-            <p class="text-xs text-gray-600 text-center mt-4">Settings will be saved to your browser's IndexedDB storage.</p>
+            <p class="text-xs text-gray-600 text-center mt-4">Data is stored offline in IndexedDB.</p>
         </div>
     </div>
 
-    <!-- Tone for vibrating/ringing sound (optional) -->
     <audio id="call-audio" loop></audio>
 
-    <script src="app.js"></script>
+    <script>
+        const s = document.createElement('script');
+        s.src = `app.js?v=${new Date().getTime()}`;
+        document.body.appendChild(s);
+    </script>
 </body>
 </html>
