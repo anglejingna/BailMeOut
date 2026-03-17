@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
     const clockDisplay = document.getElementById('clock-display');
+    const lockScreenImg = document.getElementById('lock-screen-img');
     const clockUI = document.getElementById('clock-ui');
     const fakeCallUI = document.getElementById('fake-call-ui');
     const activeCallUI = document.getElementById('active-call-ui');
@@ -27,6 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputDelay = document.getElementById('setting-delay');
     const inputVideo = document.getElementById('setting-video');
     const videoStatus = document.getElementById('video-status');
+    const btnRemoveVideo = document.getElementById('btn-remove-video');
+    const inputImage = document.getElementById('setting-image');
+    const imageStatus = document.getElementById('image-status');
     const callAudio = document.getElementById('call-audio'); // fallback ringing
     
     // State
@@ -48,11 +52,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let db;
     
     let pendingVideoBlob = null; // Stored temporarily when file is selected
+    let pendingImageBlob = null;
     
     let config = {
         callerName: "เจ้านาย (ด่วน)",
         delaySeconds: 5,
-        hasVideo: false
+        hasVideo: false,
+        hasImage: false
     };
     
     // --- INIT ---
@@ -134,6 +140,22 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 videoStatus.classList.add('hidden');
             }
+            
+            if (config.hasImage) {
+                imageStatus.textContent = "Image loaded from database.";
+                imageStatus.classList.remove('hidden');
+                
+                const imageBlob = await getDBValue('lockScreenBlob');
+                if (imageBlob) {
+                    lockScreenImg.src = URL.createObjectURL(imageBlob);
+                    lockScreenImg.classList.remove('hidden');
+                    clockDisplay.classList.add('hidden');
+                }
+            } else {
+                imageStatus.classList.add('hidden');
+                lockScreenImg.classList.add('hidden');
+                clockDisplay.classList.remove('hidden');
+            }
         } catch(e) {
             console.error("Error loading settings", e);
         }
@@ -152,6 +174,19 @@ document.addEventListener('DOMContentLoaded', () => {
             pendingVideoBlob = null; // clear it
             videoStatus.textContent = "Video saved to database.";
             videoStatus.classList.remove('hidden');
+        }
+        
+        if (pendingImageBlob) {
+            await setDBValue('lockScreenBlob', pendingImageBlob);
+            config.hasImage = true;
+            pendingImageBlob = null;
+            imageStatus.textContent = "Image saved to database.";
+            imageStatus.classList.remove('hidden');
+            
+            // Reload image in UI instantly
+            lockScreenImg.src = URL.createObjectURL(await getDBValue('lockScreenBlob'));
+            lockScreenImg.classList.remove('hidden');
+            clockDisplay.classList.add('hidden');
         }
         
         await setDBValue('config', config);
@@ -173,6 +208,35 @@ document.addEventListener('DOMContentLoaded', () => {
             pendingVideoBlob = file;
             videoStatus.textContent = `Selected: ${file.name}. Click Save!`;
             videoStatus.classList.remove('hidden');
+        }
+    });
+    
+    inputImage.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            pendingImageBlob = file;
+            imageStatus.textContent = `Selected: ${file.name}. Click Save!`;
+            imageStatus.classList.remove('hidden');
+        }
+    });
+    
+    btnRemoveVideo.addEventListener('click', async () => {
+        try {
+            if (!isDbReady) return;
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            store.delete('videoBlob');
+            
+            config.hasVideo = false;
+            await setDBValue('config', config);
+            
+            videoStatus.classList.add('hidden');
+            inputVideo.value = '';
+            pendingVideoBlob = null;
+            
+            alert("Video removed! Reverted to default audio call.");
+        } catch(e) {
+            console.error("Failed to remove video", e);
         }
     });
     
@@ -267,18 +331,19 @@ document.addEventListener('DOMContentLoaded', () => {
         fakeCallUI.classList.add('hidden');
         activeCallUI.classList.remove('hidden');
         
-        // Start front camera WebRTC
-        try {
-            userCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-            userCamera.srcObject = userCameraStream;
-            userCamera.style.display = 'block';
-        } catch (err) {
-            console.error("Camera access denied or unavailable", err);
-            // Default grey box is displayed by CSS fallback
-        }
-        
-        // Load fake caller video from IndexedDB
         if (config.hasVideo) {
+            // Start front camera WebRTC
+            try {
+                userCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+                userCamera.srcObject = userCameraStream;
+                userCamera.classList.remove('hidden');
+                userCamera.style.display = 'block';
+            } catch (err) {
+                console.error("Camera access denied or unavailable", err);
+                // Default grey box is displayed by CSS fallback
+            }
+            
+            // Load fake caller video from IndexedDB
             try {
                 const videoBlob = await getDBValue('videoBlob');
                 if (videoBlob) {
@@ -289,6 +354,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch(e) {
                 console.error("Failed to load videoBlob", e);
+            }
+        } else {
+            // Audio Call Mode (Hide Video Components)
+            userCamera.classList.add('hidden');
+            fakeCallerVideo.classList.add('hidden');
+            if (userCameraStream) {
+                userCameraStream.getTracks().forEach(track => track.stop());
+                userCameraStream = null;
             }
         }
 
@@ -318,6 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Stop WebRTC Camera
+        userCamera.classList.add('hidden');
         if (userCameraStream) {
             userCameraStream.getTracks().forEach(track => track.stop());
             userCamera.srcObject = null;

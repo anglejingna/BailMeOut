@@ -11,9 +11,10 @@
 </head>
 <body class="bg-black text-gray-800 overflow-hidden select-none h-screen w-screen m-0 p-0 font-sans">
     
-    <!-- Camouflage UI: Minimalist Digital Clock -->
+    <!-- Camouflage UI: Minimalist Digital Clock or Image -->
     <div id="clock-ui" class="flex items-center justify-center h-full w-full relative">
-        <div id="clock-display" class="text-7xl font-light tracking-widest text-[#333333]">00:00</div>
+        <img id="lock-screen-img" class="absolute top-0 left-0 w-full h-full object-cover z-0 hidden">
+        <div id="clock-display" class="text-7xl font-light tracking-widest text-[#333333] z-10">00:00</div>
         <!-- Hidden button for settings trigger -->
         <div id="settings-trigger" class="absolute top-0 right-0 w-24 h-24 bg-transparent z-50"></div>
     </div>
@@ -51,7 +52,7 @@
         <video id="fake-caller-video" class="absolute top-0 left-0 w-full h-full object-cover z-0 hidden" autoplay playsinline loop></video>
         
         <!-- User PIP Front Camera -->
-        <video id="user-camera" class="absolute bottom-32 right-6 w-28 h-40 bg-gray-800 rounded-xl object-cover shadow-2xl border-2 border-gray-600 z-10" autoplay playsinline muted></video>
+        <video id="user-camera" class="absolute bottom-32 right-6 w-28 h-40 bg-gray-800 rounded-xl object-cover shadow-2xl border-2 border-gray-600 z-10 hidden" autoplay playsinline muted></video>
 
         <!-- Overlay Controls -->
         <div class="absolute top-0 left-0 w-full p-8 z-20 bg-gradient-to-b from-black/50 to-transparent flex flex-col items-center pointer-events-none">
@@ -85,10 +86,20 @@
             </div>
 
             <div>
+                <label class="block text-sm mb-2 text-gray-400">Upload Fake Lock Screen (Screenshot)</label>
+                <input type="file" id="setting-image" accept="image/*" class="w-full bg-[#222] border border-gray-700 rounded p-3 text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
+                <p class="text-xs text-gray-500 mt-2">Display this image full-screen instead of the digital clock.</p>
+                <p id="image-status" class="text-xs text-green-500 mt-1 hidden">Image loaded from database.</p>
+            </div>
+
+            <div>
                 <label class="block text-sm mb-2 text-gray-400">Fake Video (MP4)</label>
                 <input type="file" id="setting-video" accept="video/mp4, video/webm" class="w-full bg-[#222] border border-gray-700 rounded p-3 text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
                 <p class="text-xs text-gray-500 mt-2">Upload your own MP4 video. Video is saved offline to IndexedDB.</p>
                 <p id="video-status" class="text-xs text-green-500 mt-1 hidden">Video loaded from database.</p>
+                <button id="btn-remove-video" class="mt-3 bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded transition-colors text-sm">
+                    Remove Video
+                </button>
             </div>
             
             <button id="btn-save-settings" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded mt-4 transition-colors text-lg">
