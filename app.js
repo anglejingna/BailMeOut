@@ -11,14 +11,18 @@ function initApp() {
     // Call UI dynamic elements
     const callerNameDisplay = document.getElementById('caller-name');
     const activeCallerNameDisplay = document.getElementById('active-caller-name');
+    const audioCallerNameDisplay = document.getElementById('audio-caller-name');
     const callerTypeDisplay = document.getElementById('caller-type');
     const callDurationDisplay = document.getElementById('call-duration');
+    const audioCallDurationDisplay = document.getElementById('audio-call-duration');
     const fakeCallerVideo = document.getElementById('fake-caller-video');
     const userCamera = document.getElementById('user-camera');
     const callerBgImg = document.getElementById('caller-bg-img');
     const callerBgOverlay = document.getElementById('caller-bg-overlay');
+    const audioCallerBg = document.getElementById('audio-caller-bg');
     
-    // Icons
+    // UIs
+    const activeAudioUI = document.getElementById('active-audio-ui');
     const iconPhoneIos = document.getElementById('icon-phone-ios');
     const iconVideoIos = document.getElementById('icon-video-ios');
     const iconPhoneAndroid = document.getElementById('icon-phone-android');
@@ -30,6 +34,7 @@ function initApp() {
     const btnAcceptAndroid = document.getElementById('btn-accept-android');
     const btnDeclineAndroid = document.getElementById('btn-decline-android');
     const btnEndCall = document.getElementById('btn-end-call');
+    const btnEndAudioCall = document.getElementById('btn-end-audio-call');
     
     // Theme Containers
     const themeIos = document.getElementById('theme-ios');
@@ -197,6 +202,7 @@ function initApp() {
             
             callerNameDisplay.textContent = config.callerName;
             activeCallerNameDisplay.textContent = config.callerName;
+            audioCallerNameDisplay.textContent = config.callerName;
             
             if (config.hasVideo) {
                 videoStatus.classList.remove('hidden');
@@ -246,6 +252,7 @@ function initApp() {
                     if (callerBgObjectUrl) URL.revokeObjectURL(callerBgObjectUrl);
                     callerBgObjectUrl = URL.createObjectURL(callerBgBlob);
                     callerBgImg.src = callerBgObjectUrl;
+                    audioCallerBg.src = callerBgObjectUrl;
                 }
             } else {
                 callerBgStatus.classList.add('hidden');
@@ -434,7 +441,7 @@ function initApp() {
         config.hasCallerBg = false; await setDBValue('config', config);
         inputCallerBg.value = ''; pendingCallerBgBlob = null;
         callerBgStatus.classList.add('hidden'); btnRemoveCallerBg.classList.add('hidden');
-        callerBgImg.src = '';
+        callerBgImg.src = ''; audioCallerBg.src = '';
     });
     
     btnSaveSettings.addEventListener('click', saveSettings);
@@ -571,11 +578,13 @@ function initApp() {
 
         if (config.hasRingtone && callAudio.src) {
             callAudio.play().catch(e => console.error("Audio playback failed", e));
-        } else if (navigator.vibrate) {
+        }
+        
+        if (navigator.vibrate) {
             vibrationInterval = setInterval(() => {
-                navigator.vibrate([1000, 500]);
-            }, 1500);
-            navigator.vibrate([1000, 500]);
+                navigator.vibrate([1000, 500, 1000, 500]);
+            }, 3000);
+            navigator.vibrate([1000, 500, 1000, 500]);
         }
     }
     
@@ -584,9 +593,9 @@ function initApp() {
         if (config.hasRingtone) callAudio.pause();
         
         fakeCallUI.classList.add('hidden');
-        activeCallUI.classList.remove('hidden');
         
         if (config.hasVideo) {
+            activeCallUI.classList.remove('hidden');
             try {
                 userCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
                 userCamera.srcObject = userCameraStream;
@@ -612,22 +621,13 @@ function initApp() {
             activeCallUI.style.backgroundImage = 'none';
             activeCallUI.style.backgroundColor = "black";
         } else {
-            userCamera.classList.add('hidden');
-            fakeCallerVideo.classList.add('hidden');
-            if (userCameraStream) {
-                userCameraStream.getTracks().forEach(track => track.stop());
-                userCameraStream = null;
-            }
-            
-            // Audio-call uses Caller-BG
-            activeCallUI.style.backgroundImage = config.hasCallerBg && callerBgObjectUrl ? `url(${callerBgObjectUrl})` : 'none';
-            activeCallUI.style.backgroundSize = 'cover';
-            activeCallUI.style.backgroundPosition = 'center';
-            if (config.hasCallerBg) {
-                activeCallUI.style.boxShadow = "inset 0 0 0 2000px rgba(0,0,0,0.7)";
+            // Audio-call opens new Active Audio UI screen
+            activeAudioUI.classList.remove('hidden');
+
+            if (config.hasCallerBg && callerBgObjectUrl) {
+                audioCallerBg.classList.remove('hidden');
             } else {
-                activeCallUI.style.boxShadow = "none";
-                activeCallUI.style.backgroundColor = "black";
+                audioCallerBg.classList.add('hidden');
             }
         }
 
@@ -646,6 +646,7 @@ function initApp() {
     btnDeclineIos.onclick = endCall;
     btnDeclineAndroid.onclick = endCall;
     btnEndCall.onclick = endCall;
+    btnEndAudioCall.onclick = endCall;
     
     function endCall() {
         stopVibration();
@@ -667,8 +668,10 @@ function initApp() {
             userCameraStream = null;
         }
         
+        
         fakeCallUI.classList.add('hidden');
         activeCallUI.classList.add('hidden');
+        activeAudioUI.classList.add('hidden');
         clockUI.classList.remove('hidden');
         
         callSeconds = 0;
@@ -686,6 +689,7 @@ function initApp() {
         const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
         const s = String(callSeconds % 60).padStart(2, '0');
         callDurationDisplay.textContent = `${m}:${s}`;
+        audioCallDurationDisplay.textContent = `${m}:${s}`;
     }
     
     function resetApp() {
