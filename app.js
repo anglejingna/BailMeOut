@@ -1,5 +1,5 @@
 // BailMeOut FaceTime Logic with IndexedDB
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
     // UI Elements
     const clockDisplay = document.getElementById('clock-display');
     const lockScreenImg = document.getElementById('lock-screen-img');
@@ -360,7 +360,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function startLongPress(e) {
-        e.preventDefault();
+        if (e.cancelable) {
+            e.preventDefault();
+        }
+        cancelLongPress();
         longPressTimeout = setTimeout(() => {
             clockUI.classList.add('hidden');
             settingsUI.classList.remove('hidden');
@@ -371,8 +374,9 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(longPressTimeout);
     }
     
-    settingsTrigger.addEventListener('touchstart', startLongPress);
+    settingsTrigger.addEventListener('touchstart', startLongPress, { passive: false });
     settingsTrigger.addEventListener('touchend', cancelLongPress);
+    settingsTrigger.addEventListener('touchcancel', cancelLongPress);
     settingsTrigger.addEventListener('mousedown', startLongPress);
     settingsTrigger.addEventListener('mouseup', cancelLongPress);
     settingsTrigger.addEventListener('mouseleave', cancelLongPress);
@@ -544,4 +548,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     init();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}

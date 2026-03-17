@@ -17,7 +17,7 @@
     <!-- Camouflage UI: Minimalist Digital Clock or Image -->
     <div id="clock-ui" class="flex flex-col items-center justify-start pt-24 h-full w-full relative bg-black">
         <img id="lock-screen-img" class="absolute top-0 left-0 w-full h-full object-cover z-0 hidden">
-        <div id="clock-display" class="text-7xl font-light tracking-widest text-[#f5f5f5] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] z-10 transition-all duration-300">00:00</div>
+        <div id="clock-display" class="text-7xl font-light tracking-widest text-[#f5f5f5] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] z-10 transition-all duration-300 pointer-events-none">00:00</div>
         <!-- Hidden button for settings trigger -->
         <div id="settings-trigger" class="absolute top-0 right-0 w-24 h-24 bg-transparent z-50"></div>
     </div>
@@ -27,7 +27,7 @@
         
         <!-- Caller Background Image (Blurred) -->
         <img id="caller-bg-img" class="absolute top-0 left-0 w-full h-full object-cover blur-sm opacity-60 z-0 hidden">
-        <div id="caller-bg-overlay" class="absolute top-0 left-0 w-full h-full bg-black/40 z-0 hidden"></div>
+        <div id="caller-bg-overlay" class="absolute top-0 left-0 w-full h-full bg-black/40 z-0 hidden pointer-events-none"></div>
 
         <!-- Caller Info -->
         <div class="flex flex-col items-center z-10 mt-8">
